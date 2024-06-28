@@ -20,13 +20,13 @@ if url is None:
     raise ValueError("Main server URL not found. Please set the DATA_URL environment variable.")
 
 
-def get_login_token_for_game(id):
-    data_as_json = request_data_server.get_user_data_by_tgid(id)
+def get_login_token_for_game(user_id):
+    data_as_json = request_data_server.get_user_data_by_tgid(user_id)
 
     # encrypted_login = encryptor.execute(data_as_json["login"], base64.b64decode(data_as_json["salt"]))
 
     data = {
-        'login': id,
+        'login': user_id,
         'password': data_as_json["password"],
     }
 
