@@ -62,15 +62,17 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
         }
 
         try:
-            post_new_user(user_reg)
-            post_user_to_main_server(user_data)
             login_data = get_login_token_for_game(user_id)
-            if login_data:
+            if not login_data:
+                post_new_user(user_reg)
+                post_user_to_main_server(user_data)
                 login, password = login_data['login'], login_data['password']
                 await message.answer(f"Welcome! Your login: {login}, Password: {password}",
                                      reply_markup=k.keyboards_menu[c.ENG])
             else:
                 await message.answer("You already registered or something went wrong", reply_markup=k.keyboards_menu[c.ENG])
+
+
         except Exception as e:
             logging.error(e)
             await message.answer("An error occurred during registration.")
