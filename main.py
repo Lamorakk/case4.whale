@@ -1,10 +1,9 @@
 import random
 
 import request_data_server
-
-if __name__ == '__main__':
-    request_data_server.post_new_user("TELEGRAMID" + str(random.randint(0, 999999)))
-
+#
+# if __name__ == '__main__':
+#
 
 
 # def decrypt_string(encrypted_text: str, key: bytes) -> str:

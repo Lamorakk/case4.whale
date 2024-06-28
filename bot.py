@@ -12,7 +12,8 @@ import keyboard as k
 from aiogram.types import ChatJoinRequest, Message, ChatMemberUpdated
 from aiogram import Bot, Dispatcher, F, types
 
-from request_data_server import get_login_token_for_game
+from request_data_server import post_new_user, get_user_data_by_tgid
+from requests_main_server import get_login_token_for_game, post_user_to_main_server
 
 # logging.basicConfig(
 #     filename='debug.log',  # Set the desired log file name
@@ -40,23 +41,39 @@ DELIMITER = "?"
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 
 
-
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
-    referral_id, lang = check_if_any_payload(command)
-    if referral_id is not None:
-        try:
-            login, password = get_login_token_for_game(referral_id)
-            await state.update_data(content=lang)
-            await message.answer(
-                f"Hello, your referral ID: {referral_id}, Language: {lang}. Your login: {login}, Password: {password}",
-                reply_markup=k.keyboards_menu[lang]
-            )
-        except ValueError as e:
-            await message.answer("Error fetching user data. Please contact support.")
-    else:
-        await message.answer("Problems with your referral ID. Contact your referral issuer or our support")
+    args = check_if_any_payload(command)
+    user_id = message.from_user.id
+    referral_login = args[0]
+    #check refferal
+    ref  = get_user_data_by_tgid(args[0])
+    if args[0] == ref:
+        user_data = {
+            "login": str(message.from_user.id),
+            "password": "random_password",
+            "name": message.from_user.first_name,
+            "username": message.from_user.username,
+            "referralLogin": referral_login
+        }
+        user_reg = {
+            "login": str(message.from_user.id),
+            "password": "random_password",
+        }
 
+        try:
+            post_new_user(user_reg)
+            post_user_to_main_server(user_data)
+            login_data = get_login_token_for_game(user_id)
+            if login_data:
+                login, password = login_data['login'], login_data['password']
+                await message.answer(f"Welcome! Your login: {login}, Password: {password}",
+                                     reply_markup=k.keyboards_menu[c.ENG])
+        except Exception as e:
+            logging.error(e)
+            await message.answer("An error occurred during registration.")
+    else:
+        await message.answer("No payload found.")
 
 
 # @dp.message(CommandStart(deep_link=True))
@@ -66,10 +83,10 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
 #     if args is not None:
 #         referral_id, lang = args
 #         await state.update_data(content=lang)
-#         await message.answer(f"Hello, your referral ID decoded: {referral_id} and {lang}", reply_markup=k.keyboards_menu[lang])
+#         await message.answer(f"🌟 Hello! Your referral ID: {referral_id} and Language: {lang}", reply_markup=k.keyboards_menu[lang])
 #
 #     else:
-#         await message.answer("Problems with your referral ID. Contact your referral issuer or our support")
+#         await message.answer("❗️ There seems to be an issue with your referral ID. Please contact your referral issuer or our support team. 🛠")
 
 
 @dp.message(Command("start"))
@@ -97,8 +114,7 @@ async def handler(message: Message):
     # args = message.get_args()
     # print(args)
     # payload = decode_payload(args)
-    await message.answer(link)
-
+    await message.answer(f"🚀 Click the link below to start your journey! {link}")
 
 # ------------------------ INLINE BUTTONS HANDLERS --------------------------------- #
 
@@ -223,24 +239,32 @@ async def get_lang(state: FSMContext):
 # ------------------------ MAIN FUNCTIONS --------------------------------- #
 
 
-async def exec_main():
-    # try:
-    dp.chat_join_request.register(on_user_join_ru, F.chat.id == c.SUBSCRIBE_TO_RU_CHANNEL_ID)
-    dp.chat_join_request.register(on_user_join_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID)
-
-    dp.chat_member.register(on_user_leave_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
-                            ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
-    dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
-                            ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+# async def exec_main():
+#     # try:
+#     dp.chat_join_request.register(on_user_join_ru, F.chat.id == c.SUBSCRIBE_TO_RU_CHANNEL_ID)
+#     dp.chat_join_request.register(on_user_join_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID)
+#
+#     dp.chat_member.register(on_user_leave_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
+#                             ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+#     dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
+#                             ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+#     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     # except Exception as ex:
     #     logger.error(f'[Exception] - {ex}', exc_info=True)
     # finally:
     #     await bot.session.close()
 
-
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # with open(c.USERS_FILENAME, "wb") as f:
     #     pickle.dump([], f)
     # with contextlib.suppress(KeyboardInterrupt, SystemExit):
+    # asyncio.run(exec_main())
+async def exec_main():
+    dp.chat_join_request.register(on_user_join_ru, F.chat.id == c.SUBSCRIBE_TO_RU_CHANNEL_ID)
+    dp.chat_join_request.register(on_user_join_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID)
+    dp.chat_member.register(on_user_leave_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID, ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+    dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID, ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
+if __name__ == '__main__':
     asyncio.run(exec_main())
