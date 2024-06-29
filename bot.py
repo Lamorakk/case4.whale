@@ -119,7 +119,8 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
         #     await message.answer("You already registered or something went wrong", reply_markup=k.keyboards_menu[c.ENG])
         except Exception as e:
             logging.error(e)
-            await message.answer("An error occurred during registration. Maybe you have already registered")
+            await message.answer(f"Welcome back!",
+                                 reply_markup=k.keyboards_menu[c.ENG])
 #
 # @dp.message(CommandStart(deep_link=True))
 # async def handler(message: Message, command: CommandObject, state: FSMContext):
