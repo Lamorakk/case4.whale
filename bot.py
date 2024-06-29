@@ -39,6 +39,7 @@ DELIMITER = "?"
 # class UserState(StatesGroup):
 #     lang_code = State()
 
+# Privacy policy message
 PRIVACY_POLICY_TEXTS = {
     'en': (
         "Privacy Policy 😊\n"
@@ -79,7 +80,6 @@ PRIVACY_POLICY_TEXTS = {
         "    Для предоставления возможности участия в интерактивных функциях ✨"
     )
 }
-
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
@@ -220,7 +220,7 @@ async def changeLanguage(callback: types.CallbackQuery, state: FSMContext):
 
     await state.update_data(content=toggled_lang)
     await try_editing(callback.message, msg_text=c.CONTENT[toggled_lang]["WELCOME_WITH_REFERRAL"],
-                      msg_keyboard=k.keyboards_menu[toggled_lang])
+                      msg_keyboard=k.keyboards_menu[lang])
 
 
 # Constants for button text and callback data
@@ -230,8 +230,8 @@ DECLINE_PRIVACY_POLICY = "decline_privacy_policy"
 # Inline keyboard with Accept and Decline buttons
 privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text="Accept ✔", callback_data=ACCEPT_PRIVACY_POLICY),
-        InlineKeyboardButton(text="Decline ❌", callback_data=DECLINE_PRIVACY_POLICY)
+        InlineKeyboardButton(text="Accept", callback_data=ACCEPT_PRIVACY_POLICY),
+        InlineKeyboardButton(text="Decline", callback_data=DECLINE_PRIVACY_POLICY)
     ]
 ])
 
@@ -239,10 +239,12 @@ privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 async def start_earning(callback: types.CallbackQuery, state: FSMContext):
     try:
         lang = await get_lang(state)
-        await callback.message.answer(text=PRIVACY_POLICY_TEXTS[lang], reply_markup=privacy_policy_keyboard)
+        if lang == c.RU:
+            await callback.message.answer(text=PRIVACY_POLICY_TEXTS['ru'], reply_markup=privacy_policy_keyboard)
+        else:
+            await callback.message.answer(text=PRIVACY_POLICY_TEXTS['en'], reply_markup=privacy_policy_keyboard)
     except Exception as e:
         await callback.answer(text="Some unexpected error occurred", show_alert=True)
-
 
 @dp.callback_query(F.data == ACCEPT_PRIVACY_POLICY)
 async def accept_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
