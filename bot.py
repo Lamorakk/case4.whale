@@ -39,8 +39,27 @@ DELIMITER = "?"
 # class UserState(StatesGroup):
 #     lang_code = State()
 
-# Privacy policy message
-PRIVACY_POLICY_TEXT = "Please read and accept our privacy policy to proceed."
+PRIVACY_POLICY_TEXT = (
+    "Privacy Policy 😊\n"
+    "Your Privacy Matters 💖\n\n"
+    "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
+    "This Privacy Policy outlines how we collect, use, and safeguard your information when you use our website.\n"
+    "Data Collection 📊\n\n"
+    "We may collect personal data from you when you interact with our site, such as when you register for an account, "
+    "subscribe to our newsletter, fill out a form, or make a purchase. The types of information we collect include:\n\n"
+    "    Personal Identification Information: Name, email address, phone number, and postal address. 📇\n"
+    "    Technical Data: IP address, browser type and version, time zone setting, browser plug-in types and versions, "
+    "operating system, and platform. 🖥️\n"
+    "    Usage Data: Information about how you use our website, products, and services. 📈\n"
+    "    Marketing and Communications Data: Your preferences in receiving marketing from us and your communication preferences. 💌\n\n"
+    "Use of Data 🔧\n\n"
+    "The personal data we collect may be used for the following purposes:\n\n"
+    "    To provide and maintain our service ⚙️\n"
+    "    To notify you about changes to our service 🔔\n"
+    "    To allow you to participate in interactive features ✨"
+)
+
+
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
@@ -191,8 +210,8 @@ DECLINE_PRIVACY_POLICY = "decline_privacy_policy"
 # Inline keyboard with Accept and Decline buttons
 privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text="Accept", callback_data=ACCEPT_PRIVACY_POLICY),
-        InlineKeyboardButton(text="Decline", callback_data=DECLINE_PRIVACY_POLICY)
+        InlineKeyboardButton(text="Accept ✔", callback_data=ACCEPT_PRIVACY_POLICY),
+        InlineKeyboardButton(text="Decline ❌", callback_data=DECLINE_PRIVACY_POLICY)
     ]
 ])
 
