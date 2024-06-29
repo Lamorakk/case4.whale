@@ -20,7 +20,7 @@ if url is None:
     raise ValueError("Main server URL not found. Please set the DATA_URL environment variable.")
 
 
-def get_login_token_for_game(user_id):
+def get_login_token_for_game(user_id, ):
     data_as_json = request_data_server.get_user_data_by_tgid(user_id)
 
     # encrypted_login = encryptor.execute(data_as_json["login"], base64.b64decode(data_as_json["salt"]))
@@ -43,9 +43,9 @@ def get_login_token_for_game(user_id):
 
 
 def post_user_to_main_server(user_data):
-    Url = f"{url}/users/register"
+    uri = f"{url}/users/register"
 
-    response = requests.post(Url, json=user_data)
+    response = requests.post(uri, json=user_data)
 
     if response.status_code in {200, 201}:
         response_data = response.json()

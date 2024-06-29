@@ -6,7 +6,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandStart, CommandObject, ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.deep_linking import decode_payload, create_start_link
-from aiogram.types import WebAppInfo
+from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 import constants as c
 import keyboard as k
 from aiogram.types import ChatJoinRequest, Message, ChatMemberUpdated
@@ -34,50 +34,89 @@ dp = Dispatcher()
 bot = Bot(token=c.BOT_TOKEN)
 
 DELIMITER = "?"
+
+
 # class UserState(StatesGroup):
 #     lang_code = State()
 
-
+# Privacy policy message
+PRIVACY_POLICY_TEXT = "Please read and accept our privacy policy to proceed."
 # ------------------------ COMMAND HANDLERS --------------------------------- #
-
-
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
     args = check_if_any_payload(command)
-    user_id = message.from_user.id
     referral_login = args[0]
-    #check refferal
-    ref  = get_user_data_by_tgid(args[0])
-    if args[0] == ref:
-        user_data = {
-            "login": str(message.from_user.id),
-            "password": "random_password",
-            "name": message.from_user.first_name,
-            "username": message.from_user.username,
-            "referralLogin": referral_login
-        }
+
+    response = get_user_data_by_tgid(args[0])
+    if args is None:
+        await message.answer("No payload found. Referral link is damaged or this referral is not registered")
+    elif response is None:
+        await message.answer("User data could not be retrieved. Referral link might be incorrect or the user is not registered.")
+    elif response["login"] == referral_login:
         user_reg = {
             "login": str(message.from_user.id),
             "password": "random_password",
         }
 
         try:
-            login_data = get_login_token_for_game(user_id)
-            if not login_data:
-                post_new_user(user_reg)
-                post_user_to_main_server(user_data)
-                login, password = login_data['login'], login_data['password']
-                await message.answer(f"Welcome! Your login: {login}, Password: {password}",
-                                     reply_markup=k.keyboards_menu[c.ENG])
-            else:
-                await message.answer("You already registered or something went wrong", reply_markup=k.keyboards_menu[c.ENG])
+            login_data = post_new_user(user_reg)
+            login, password = login_data['login'], login_data['password']
 
-
+            # login_data = get_login_token_for_game(user_id)
+            refdata = message.text.split(" ")[1] + DELIMITER + c.ENG
+            reflink = await create_start_link(bot, refdata, encode=True)
+            user_data = {
+                "login": login,
+                "password": password,
+                "name": message.from_user.first_name,
+                "username": message.from_user.username,
+                "referralLogin": referral_login,
+                "reflink": reflink
+            }
+            post_user_to_main_server(user_data)
+            await message.answer(f"Welcome! Your login: {login}, Password: {password}",
+                                 reply_markup=k.keyboards_menu[c.ENG])
+        # else:
+        #     await message.answer("You already registered or something went wrong", reply_markup=k.keyboards_menu[c.ENG])
         except Exception as e:
             logging.error(e)
-            await message.answer("An error occurred during registration.")
-    else:
-        await message.answer("No payload found.")
+            await message.answer("An error occurred during registration. Maybe you have already registered")
+#
+# @dp.message(CommandStart(deep_link=True))
+# async def handler(message: Message, command: CommandObject, state: FSMContext):
+#     args = check_if_any_payload(command)
+#     referral_login = args[0]
+#
+#     response = get_user_data_by_tgid(args[0])
+#     if args is None:
+#         await message.answer("No payload found. Referral link is damaged or this referral is not registered")
+#     elif response["login"] == referral_login:
+#
+#         user_reg = {
+#             "login": str(message.from_user.id),
+#             "password": "random_password",
+#         }
+#
+#         try:
+#             login_data = post_new_user(user_reg)
+#             login, password = login_data['login'], login_data['password']
+#
+#             refdata = message.text.split(" ")[1] + DELIMITER + c.ENG
+#             reflink = await create_start_link(bot, refdata, encode=True)
+#             user_data = {
+#                 "login": login,
+#                 "password": password,
+#                 "name": message.from_user.first_name,
+#                 "username": message.from_user.username,
+#                 "referralLogin": referral_login,
+#                 "reflink": reflink
+#             }
+#             post_user_to_main_server(user_data)
+#             await message.answer(f"Welcome! Your login: {login}, Password: {password}",
+#                                  reply_markup=k.keyboards_menu[c.ENG])
+#            except Exception as e:
+#             logging.error(e)
+#             await message.answer("An error occurred during registration. Maybe you have already registered")
 
 
 # @dp.message(CommandStart(deep_link=True))
@@ -112,6 +151,17 @@ def check_if_any_payload(command: CommandObject):
 
 @dp.message(Command("referral"))
 async def handler(message: Message):
+    ref = str(message.from_user.id) + DELIMITER + c.ENG
+    link = await create_start_link(bot, ref, encode=True)
+    # result: 'https://t.me/MyBot?start=Zm9v'
+    # args = message.get_args()
+    # print(args)
+    # payload = decode_payload(args)
+    await message.answer(f"🚀 Click the link below to start your journey! {link}")
+
+
+@dp.message(Command("r"))
+async def handler(message: Message):
     ref = message.text.split(" ")[1] + DELIMITER + c.ENG
     link = await create_start_link(bot, ref, encode=True)
     # result: 'https://t.me/MyBot?start=Zm9v'
@@ -119,6 +169,7 @@ async def handler(message: Message):
     # print(args)
     # payload = decode_payload(args)
     await message.answer(f"🚀 Click the link below to start your journey! {link}")
+
 
 # ------------------------ INLINE BUTTONS HANDLERS --------------------------------- #
 
@@ -129,32 +180,114 @@ async def changeLanguage(callback: types.CallbackQuery, state: FSMContext):
     toggled_lang = toggle_lang(lang)
 
     await state.update_data(content=toggled_lang)
-    await try_editing(callback.message, msg_text=c.CONTENT[toggled_lang]["WELCOME_WITH_REFERRAL"], msg_keyboard=k.keyboards_menu[lang])
+    await try_editing(callback.message, msg_text=c.CONTENT[toggled_lang]["WELCOME_WITH_REFERRAL"],
+                      msg_keyboard=k.keyboards_menu[lang])
 
+
+# Constants for button text and callback data
+ACCEPT_PRIVACY_POLICY = "accept_privacy_policy"
+DECLINE_PRIVACY_POLICY = "decline_privacy_policy"
+
+# Inline keyboard with Accept and Decline buttons
+privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [
+        InlineKeyboardButton(text="Accept", callback_data=ACCEPT_PRIVACY_POLICY),
+        InlineKeyboardButton(text="Decline", callback_data=DECLINE_PRIVACY_POLICY)
+    ]
+])
 
 @dp.callback_query(F.data.startswith("start_earning"))
 async def start_earning(callback: types.CallbackQuery, state: FSMContext):
-    lang = await get_lang(state)
-    is_subscribed = await check_subscription(callback.from_user)
-    if is_subscribed:
-        web_app = WebAppInfo(url=c.URL_TO_WEBSITE)
-        menu_button = types.MenuButtonWebApp(text="Web", web_app=web_app)
-        await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=menu_button)
+    try:
+        await callback.message.answer(text=PRIVACY_POLICY_TEXT, reply_markup=privacy_policy_keyboard)
+    except Exception as e:
+        await callback.answer(text="Some unexpected error occurred", show_alert=True)
 
-        # await try_editing(callback.message, msg_text=c.CONTENT[lang]["LETTING_TO_GAME"])
+@dp.callback_query(F.data == ACCEPT_PRIVACY_POLICY)
+async def accept_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        await callback.message.delete()  # Delete the privacy policy message
+
+        lang = await get_lang(state)
+        is_subscribed = await check_subscription(callback.from_user)
+        if is_subscribed:
+            login_data = get_user_data_by_tgid(callback.from_user.id)
+            if login_data is None:
+                await callback.answer(text="User data could not be retrieved. Please try again later.", show_alert=True)
+                return
+            login, password = login_data['login'], login_data['password']
+
+            localization = "default"
+            if lang == c.ENG:
+                localization = 'en'
+            if lang == c.RU:
+                localization = 'ru'
+
+            await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=None)
+            web_app = WebAppInfo(url=c.URL_TO_WEBSITE + f"?data={login}&pmain={password}&lang={localization}")
+            menu_button = types.MenuButtonWebApp(text="Web", web_app=web_app)
+            await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=menu_button)
+
+            await callback.answer(
+                text=c.CONTENT[lang]["LETTING_TO_GAME"],
+                show_alert=True
+            )
+        else:
+            await try_editing(callback.message, msg_text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
+            await callback.answer(
+                text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"],
+                show_alert=True
+            )
+    except Exception as e:
+        await callback.answer(text="Some unexpected error occurred", show_alert=True)
+
+@dp.callback_query(F.data == DECLINE_PRIVACY_POLICY)
+async def decline_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        await callback.message.delete()  # Delete the privacy policy message
         await callback.answer(
-            text=c.CONTENT[lang]["LETTING_TO_GAME"],
+            text="We are sorry, but we cannot proceed without accepting the privacy policy. 😞",
             show_alert=True
         )
-        # await callback.answer(c.CONTENT[lang]["LETTING_TO_GAME"], show_alert=True)
-    else:
-        await try_editing(callback.message, msg_text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
-        await callback.answer(
-            text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"],
-            show_alert=True
-        )
-        # await callback.answer(c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
-        # await bot.pin_chat_message(callback.from_user.id, sent_message.message_id)
+    except Exception as e:
+        await callback.answer(text="Some unexpected error occurred", show_alert=True)
+
+# @dp.callback_query(F.data.startswith("start_earning"))
+# async def start_earning(callback: types.CallbackQuery, state: FSMContext):
+#     try:
+#         lang = await get_lang(state)
+#         is_subscribed = await check_subscription(callback.from_user)
+#         if is_subscribed:
+#             login_data = get_user_data_by_tgid(callback.from_user.id)
+#             login, password = login_data['login'], login_data['password']
+#
+#             localization = "default"
+#             if lang == c.ENG:
+#                 localization = 'en'
+#             if lang == c.RU:
+#                 localization = 'ru'
+#
+#             await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=None)
+#             web_app = WebAppInfo(url=c.URL_TO_WEBSITE + f"?data={login}&pmain={password}&lang={localization}")
+#             menu_button = types.MenuButtonWebApp(text="Web", web_app=web_app)
+#             await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=menu_button)
+#
+#             # await try_editing(callback.message, msg_text=c.CONTENT[lang]["LETTING_TO_GAME"])
+#             await callback.answer(
+#                 text=c.CONTENT[lang]["LETTING_TO_GAME"],
+#                 show_alert=True
+#             )
+#             # await callback.answer(c.CONTENT[lang]["LETTING_TO_GAME"], show_alert=True)
+#         else:
+#             await try_editing(callback.message, msg_text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
+#             await callback.answer(
+#                 text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"],
+#                 show_alert=True
+#             )
+#             # await callback.answer(c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
+#             # await bot.pin_chat_message(callback.from_user.id, sent_message.message_id)
+#     except Exception:
+#         await callback.answer(text="Some unexpected error occured", show_alert=True)
 
 
 @dp.callback_query(F.data.startswith("questions"))
@@ -253,22 +386,25 @@ async def get_lang(state: FSMContext):
 #     dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
 #                             ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
 #     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
-    # except Exception as ex:
-    #     logger.error(f'[Exception] - {ex}', exc_info=True)
-    # finally:
-    #     await bot.session.close()
+# except Exception as ex:
+#     logger.error(f'[Exception] - {ex}', exc_info=True)
+# finally:
+#     await bot.session.close()
 
 # if __name__ == '__main__':
-    # with open(c.USERS_FILENAME, "wb") as f:
-    #     pickle.dump([], f)
-    # with contextlib.suppress(KeyboardInterrupt, SystemExit):
-    # asyncio.run(exec_main())
+# with open(c.USERS_FILENAME, "wb") as f:
+#     pickle.dump([], f)
+# with contextlib.suppress(KeyboardInterrupt, SystemExit):
+# asyncio.run(exec_main())
 async def exec_main():
     dp.chat_join_request.register(on_user_join_ru, F.chat.id == c.SUBSCRIBE_TO_RU_CHANNEL_ID)
     dp.chat_join_request.register(on_user_join_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID)
-    dp.chat_member.register(on_user_leave_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID, ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
-    dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID, ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+    dp.chat_member.register(on_user_leave_eng, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
+                            ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
+    dp.chat_member.register(on_user_leave_ru, F.chat.id == c.SUBSCRIBE_TO_ENG_CHANNEL_ID,
+                            ChatMemberUpdatedFilter(IS_MEMBER >> IS_NOT_MEMBER))
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+
 
 if __name__ == '__main__':
     asyncio.run(exec_main())

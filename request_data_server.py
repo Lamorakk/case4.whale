@@ -26,7 +26,8 @@ def get_user_data_by_tgid(user_id):
     if response.status_code == 200:
         return response.json()
     else:
-        raise ValueError(f"Failed to get user data: {response.status_code}")
+        return None
+        # raise ValueError(f"Failed to get user data: {response.status_code}")
 
 def post_new_user(data):
     salt = os.urandom(16)  # Save this salt for decryption
