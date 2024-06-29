@@ -39,26 +39,46 @@ DELIMITER = "?"
 # class UserState(StatesGroup):
 #     lang_code = State()
 
-PRIVACY_POLICY_TEXT = (
-    "Privacy Policy 😊\n"
-    "Your Privacy Matters 💖\n\n"
-    "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
-    "This Privacy Policy outlines how we collect, use, and safeguard your information when you use our website.\n"
-    "Data Collection 📊\n\n"
-    "We may collect personal data from you when you interact with our site, such as when you register for an account, "
-    "subscribe to our newsletter, fill out a form, or make a purchase. The types of information we collect include:\n\n"
-    "    Personal Identification Information: Name, email address, phone number, and postal address. 📇\n"
-    "    Technical Data: IP address, browser type and version, time zone setting, browser plug-in types and versions, "
-    "operating system, and platform. 🖥️\n"
-    "    Usage Data: Information about how you use our website, products, and services. 📈\n"
-    "    Marketing and Communications Data: Your preferences in receiving marketing from us and your communication preferences. 💌\n\n"
-    "Use of Data 🔧\n\n"
-    "The personal data we collect may be used for the following purposes:\n\n"
-    "    To provide and maintain our service ⚙️\n"
-    "    To notify you about changes to our service 🔔\n"
-    "    To allow you to participate in interactive features ✨"
-)
-
+PRIVACY_POLICY_TEXTS = {
+    'en': (
+        "Privacy Policy 😊\n"
+        "Your Privacy Matters 💖\n\n"
+        "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
+        "This Privacy Policy outlines how we collect, use, and safeguard your information when you use our website.\n"
+        "Data Collection 📊\n\n"
+        "We may collect personal data from you when you interact with our site, such as when you register for an account, "
+        "subscribe to our newsletter, fill out a form, or make a purchase. The types of information we collect include:\n\n"
+        "    Personal Identification Information: Name, email address, phone number, and postal address. 📇\n"
+        "    Technical Data: IP address, browser type and version, time zone setting, browser plug-in types and versions, "
+        "operating system, and platform. 🖥️\n"
+        "    Usage Data: Information about how you use our website, products, and services. 📈\n"
+        "    Marketing and Communications Data: Your preferences in receiving marketing from us and your communication preferences. 💌\n\n"
+        "Use of Data 🔧\n\n"
+        "The personal data we collect may be used for the following purposes:\n\n"
+        "    To provide and maintain our service ⚙️\n"
+        "    To notify you about changes to our service 🔔\n"
+        "    To allow you to participate in interactive features ✨"
+    ),
+    'ru': (
+        "Вы рискуете своими личными средствами !\n\n"
+        "🚨 Внимание: Продолжая инвестировать, вы рискуете потерять личные средства. 💸\n"
+        "Пожалуйста, убедитесь, что вы внимательно изучили все детали перед продолжением. 🤔\n"
+        "Инвестируйте разумно и будьте в курсе событий. 📈\n\n"
+        "Сбор данных 📊\n\n"
+        "Мы можем собирать персональные данные от вас при взаимодействии с нашим сайтом, такими как регистрация учетной записи, "
+        "подписка на нашу рассылку, заполнение формы или совершение покупки. Типы информации, которые мы собираем, включают:\n\n"
+        "    Персональная идентификационная информация: Имя, адрес электронной почты, номер телефона и почтовый адрес. 📇\n"
+        "    Технические данные: IP-адрес, тип и версия браузера, настройки часового пояса, типы и версии плагинов браузера, "
+        "операционная система и платформа. 🖥️\n"
+        "    Данные об использовании: Информация о том, как вы используете наш веб-сайт, продукты и услуги. 📈\n"
+        "    Данные о маркетинге и коммуникациях: Ваши предпочтения в получении маркетинговых материалов от нас и ваши предпочтения в общении. 💌\n\n"
+        "Использование данных 🔧\n\n"
+        "Персональные данные, которые мы собираем, могут использоваться для следующих целей:\n\n"
+        "    Для предоставления и поддержки наших услуг ⚙️\n"
+        "    Для уведомления вас о изменениях в наших услугах 🔔\n"
+        "    Для предоставления возможности участия в интерактивных функциях ✨"
+    )
+}
 
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 @dp.message(CommandStart(deep_link=True))
@@ -200,7 +220,7 @@ async def changeLanguage(callback: types.CallbackQuery, state: FSMContext):
 
     await state.update_data(content=toggled_lang)
     await try_editing(callback.message, msg_text=c.CONTENT[toggled_lang]["WELCOME_WITH_REFERRAL"],
-                      msg_keyboard=k.keyboards_menu[lang])
+                      msg_keyboard=k.keyboards_menu[toggled_lang])
 
 
 # Constants for button text and callback data
@@ -218,9 +238,11 @@ privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 @dp.callback_query(F.data.startswith("start_earning"))
 async def start_earning(callback: types.CallbackQuery, state: FSMContext):
     try:
-        await callback.message.answer(text=PRIVACY_POLICY_TEXT, reply_markup=privacy_policy_keyboard)
+        lang = await get_lang(state)
+        await callback.message.answer(text=PRIVACY_POLICY_TEXTS[lang], reply_markup=privacy_policy_keyboard)
     except Exception as e:
         await callback.answer(text="Some unexpected error occurred", show_alert=True)
+
 
 @dp.callback_query(F.data == ACCEPT_PRIVACY_POLICY)
 async def accept_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
