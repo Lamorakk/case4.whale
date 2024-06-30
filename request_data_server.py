@@ -15,7 +15,7 @@ if token is None:
     raise ValueError("Bearer token not found. Please set the BEARER_TOKEN environment variable.")
 
 # URL of the API endpoint
-url = 'http://localhost:6029/api/credentials'
+url = 'https://whalefederation.tech:6029/api/credentials'
 if url is None:
     raise ValueError("Main server url token not found. Please set the DATA_URL environment variable.")
 
@@ -32,7 +32,6 @@ def get_user_data_by_tgid(user_id):
 def post_new_user(data):
     salt = os.urandom(16)  # Save this salt for decryption
     encoded_salt = base64.b64encode(salt).decode('utf-8')
-    Url  = f''
     data['password'] = encryptor.execute(data['password'], salt)
     data['salt'] = encoded_salt
 

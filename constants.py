@@ -6,7 +6,7 @@ SUBSCRIBE_TO_ENG_CHANNEL_URL = "https://t.me/+kbODNXySt-8wNzMy"
 SUBSCRIBE_TO_RU_CHANNEL_ID = -1002173476839
 SUBSCRIBE_TO_RU_CHANNEL_URL = "https://t.me/+Ot6DfJnjf0Q5NWVi"
 
-URL_TO_WEBSITE = "https://whale-race.vercel.app"
+URL_TO_WEBSITE = "https://whalefederation.tech"
 
 RU = "RU"
 ENG = "ENG"

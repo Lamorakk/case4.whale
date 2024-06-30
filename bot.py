@@ -41,7 +41,7 @@ DELIMITER = "?"
 
 # Privacy policy message
 PRIVACY_POLICY_TEXTS = {
-    'en': (
+    'ENG': (
         "Privacy Policy 😊\n"
         "Your Privacy Matters 💖\n\n"
         "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
@@ -60,7 +60,7 @@ PRIVACY_POLICY_TEXTS = {
         "    To notify you about changes to our service 🔔\n"
         "    To allow you to participate in interactive features ✨"
     ),
-    'ru': (
+    'RU': (
         "Вы рискуете своими личными средствами !\n\n"
         "🚨 Внимание: Продолжая инвестировать, вы рискуете потерять личные средства. 💸\n"
         "Пожалуйста, убедитесь, что вы внимательно изучили все детали перед продолжением. 🤔\n"
@@ -90,7 +90,7 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
     if args is None:
         await message.answer("No payload found. Referral link is damaged or this referral is not registered")
     elif response is None:
-        await message.answer("User data could not be retrieved. Referral link might be incorrect or the user is not registered.")
+        await message.answer("Referral data could not be retrieved. Referral link might be incorrect or the user is not registered.")
     elif response["login"] == referral_login:
         user_reg = {
             "login": str(message.from_user.id),
@@ -221,7 +221,8 @@ async def changeLanguage(callback: types.CallbackQuery, state: FSMContext):
 
     await state.update_data(content=toggled_lang)
     await try_editing(callback.message, msg_text=c.CONTENT[toggled_lang]["WELCOME_WITH_REFERRAL"],
-                      msg_keyboard=k.keyboards_menu[lang])
+                      msg_keyboard=k.keyboards_menu[toggled_lang])
+
 
 
 # Constants for button text and callback data
@@ -240,12 +241,12 @@ privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
 async def start_earning(callback: types.CallbackQuery, state: FSMContext):
     try:
         lang = await get_lang(state)
-        if lang == c.RU:
-            await callback.message.answer(text=PRIVACY_POLICY_TEXTS['ru'], reply_markup=privacy_policy_keyboard)
-        else:
-            await callback.message.answer(text=PRIVACY_POLICY_TEXTS['en'], reply_markup=privacy_policy_keyboard)
+        await callback.message.answer(text=PRIVACY_POLICY_TEXTS[lang], reply_markup=privacy_policy_keyboard)
     except Exception as e:
+        logging.error(f"Error in start_earning: {e}")
         await callback.answer(text="Some unexpected error occurred", show_alert=True)
+
+
 
 @dp.callback_query(F.data == ACCEPT_PRIVACY_POLICY)
 async def accept_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
