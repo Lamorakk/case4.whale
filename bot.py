@@ -2,11 +2,12 @@ import asyncio
 import contextlib
 import logging
 
+import aiogram
 from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandStart, CommandObject, ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.deep_linking import decode_payload, create_start_link
-from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 import constants as c
 import keyboard as k
 from aiogram.types import ChatJoinRequest, Message, ChatMemberUpdated
@@ -15,6 +16,8 @@ from aiogram import Bot, Dispatcher, F, types
 from request_data_server import post_new_user, get_user_data_by_tgid
 from requests_main_server import get_login_token_for_game, post_user_to_main_server
 
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 # logging.basicConfig(
 #     filename='debug.log',  # Set the desired log file name
 #     level=logging.DEBUG,  # Capture debug messages
@@ -40,58 +43,58 @@ DELIMITER = "?"
 #     lang_code = State()
 
 # Privacy policy message
-PRIVACY_POLICY_TEXTS = {
-    'ENG': (
-        "Privacy Policy 😊\n"
-        "Your Privacy Matters 💖\n\n"
-        "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
-        "This Privacy Policy outlines how we collect, use, and safeguard your information when you use our website.\n"
-        "Data Collection 📊\n\n"
-        "We may collect personal data from you when you interact with our site, such as when you register for an account, "
-        "subscribe to our newsletter, fill out a form, or make a purchase. The types of information we collect include:\n\n"
-        "    Personal Identification Information: Name, email address, phone number, and postal address. 📇\n"
-        "    Technical Data: IP address, browser type and version, time zone setting, browser plug-in types and versions, "
-        "operating system, and platform. 🖥️\n"
-        "    Usage Data: Information about how you use our website, products, and services. 📈\n"
-        "    Marketing and Communications Data: Your preferences in receiving marketing from us and your communication preferences. 💌\n\n"
-        "Use of Data 🔧\n\n"
-        "The personal data we collect may be used for the following purposes:\n\n"
-        "    To provide and maintain our service ⚙️\n"
-        "    To notify you about changes to our service 🔔\n"
-        "    To allow you to participate in interactive features ✨"
-    ),
-    'RU': (
-        "Вы рискуете своими личными средствами !\n\n"
-        "🚨 Внимание: Продолжая инвестировать, вы рискуете потерять личные средства. 💸\n"
-        "Пожалуйста, убедитесь, что вы внимательно изучили все детали перед продолжением. 🤔\n"
-        "Инвестируйте разумно и будьте в курсе событий. 📈\n\n"
-        "Сбор данных 📊\n\n"
-        "Мы можем собирать персональные данные от вас при взаимодействии с нашим сайтом, такими как регистрация учетной записи, "
-        "подписка на нашу рассылку, заполнение формы или совершение покупки. Типы информации, которые мы собираем, включают:\n\n"
-        "    Персональная идентификационная информация: Имя, адрес электронной почты, номер телефона и почтовый адрес. 📇\n"
-        "    Технические данные: IP-адрес, тип и версия браузера, настройки часового пояса, типы и версии плагинов браузера, "
-        "операционная система и платформа. 🖥️\n"
-        "    Данные об использовании: Информация о том, как вы используете наш веб-сайт, продукты и услуги. 📈\n"
-        "    Данные о маркетинге и коммуникациях: Ваши предпочтения в получении маркетинговых материалов от нас и ваши предпочтения в общении. 💌\n\n"
-        "Использование данных 🔧\n\n"
-        "Персональные данные, которые мы собираем, могут использоваться для следующих целей:\n\n"
-        "    Для предоставления и поддержки наших услуг ⚙️\n"
-        "    Для уведомления вас о изменениях в наших услугах 🔔\n"
-        "    Для предоставления возможности участия в интерактивных функциях ✨"
-    )
-}
+# PRIVACY_POLICY_TEXTS = {
+#     'ENG': (
+#         "Privacy Policy 😊\n"
+#         "Your Privacy Matters 💖\n\n"
+#         "We take responsibility for protecting your privacy and ensuring the security of your personal data. "
+#         "This Privacy Policy outlines how we collect, use, and safeguard your information when you use our website.\n"
+#         "Data Collection 📊\n\n"
+#         "We may collect personal data from you when you interact with our site, such as when you register for an account, "
+#         "subscribe to our newsletter, fill out a form, or make a purchase. The types of information we collect include:\n\n"
+#         "    Personal Identification Information: Name, email address, phone number, and postal address. 📇\n"
+#         "    Technical Data: IP address, browser type and version, time zone setting, browser plug-in types and versions, "
+#         "operating system, and platform. 🖥️\n"
+#         "    Usage Data: Information about how you use our website, products, and services. 📈\n"
+#         "    Marketing and Communications Data: Your preferences in receiving marketing from us and your communication preferences. 💌\n\n"
+#         "Use of Data 🔧\n\n"
+#         "The personal data we collect may be used for the following purposes:\n\n"
+#         "    To provide and maintain our service ⚙️\n"
+#         "    To notify you about changes to our service 🔔\n"
+#         "    To allow you to participate in interactive features ✨"
+#     ),
+#     'RU': (
+#         "Вы рискуете своими личными средствами !\n\n"
+#         "🚨 Внимание: Продолжая инвестировать, вы рискуете потерять личные средства. 💸\n"
+#         "Пожалуйста, убедитесь, что вы внимательно изучили все детали перед продолжением. 🤔\n"
+#         "Инвестируйте разумно и будьте в курсе событий. 📈\n\n"
+#         "Сбор данных 📊\n\n"
+#         "Мы можем собирать персональные данные от вас при взаимодействии с нашим сайтом, такими как регистрация учетной записи, "
+#         "подписка на нашу рассылку, заполнение формы или совершение покупки. Типы информации, которые мы собираем, включают:\n\n"
+#         "    Персональная идентификационная информация: Имя, адрес электронной почты, номер телефона и почтовый адрес. 📇\n"
+#         "    Технические данные: IP-адрес, тип и версия браузера, настройки часового пояса, типы и версии плагинов браузера, "
+#         "операционная система и платформа. 🖥️\n"
+#         "    Данные об использовании: Информация о том, как вы используете наш веб-сайт, продукты и услуги. 📈\n"
+#         "    Данные о маркетинге и коммуникациях: Ваши предпочтения в получении маркетинговых материалов от нас и ваши предпочтения в общении. 💌\n\n"
+#         "Использование данных 🔧\n\n"
+#         "Персональные данные, которые мы собираем, могут использоваться для следующих целей:\n\n"
+#         "    Для предоставления и поддержки наших услуг ⚙️\n"
+#         "    Для уведомления вас о изменениях в наших услугах 🔔\n"
+#         "    Для предоставления возможности участия в интерактивных функциях ✨"
+#     )
+# }
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
     args = check_if_any_payload(command)
     referral_login = args[0]
-
     response = get_user_data_by_tgid(args[0])
     if args is None:
         await message.answer("No payload found. Referral link is damaged or this referral is not registered")
     elif response is None:
         await message.answer("Referral data could not be retrieved. Referral link might be incorrect or the user is not registered.")
     elif response["login"] == referral_login:
+
         user_reg = {
             "login": str(message.from_user.id),
             "password": "random_password",
@@ -100,8 +103,8 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
         try:
             login_data = post_new_user(user_reg)
             login, password = login_data['login'], login_data['password']
+            await message.answer("Choose language🌍", reply_markup=k.firstkeyboard)
 
-            # login_data = get_login_token_for_game(user_id)
             refdata = message.text.split(" ")[1] + DELIMITER + c.ENG
             reflink = await create_start_link(bot, refdata, encode=True)
             user_data = {
@@ -113,15 +116,56 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
                 "reflink": reflink
             }
             post_user_to_main_server(user_data)
-            await message.answer(f"Welcome! Your login: {login}, Password: {password}",
-                                 reply_markup=k.keyboards_menu[c.ENG])
-        # else:
-        #     await message.answer("You already registered or something went wrong", reply_markup=k.keyboards_menu[c.ENG])
+
         except Exception as e:
             logging.error(e)
-            await message.answer(f"Welcome back!",
-                                 reply_markup=k.keyboards_menu[c.ENG])
-#
+            await message.answer(f"Welcome back!", reply_markup=k.keyboards_menu[c.ENG])
+
+
+@dp.callback_query(F.data == "eng_change")
+async def eng_change(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    try:
+        await callback.message.edit_text(f"To get started, join our project channel and click the ready button.\n\n"
+                                         f"👉 [Click here to join]({c.CHANNEL_LINK})\n",
+                                         reply_markup=k.ready_keyboard, parse_mode="Markdown")
+    except Exception as e:
+        logging.error(e)
+        await callback.message.delete()
+        await callback.message.answer("To get started, join our project channel and click the ready button.\n\n"
+                                         "👉 [Click here to join](https://t.me/+2Lg1H7U5iMQ1NTlk)\n",
+                                         reply_markup=k.ready_keyboard, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "ready")
+async def on_ready_button_click(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    is_subscribed = await check_subscription2(callback.from_user)
+    if is_subscribed:
+        try:
+            await callback.message.edit_text(f"Welcome!",
+                                             reply_markup=k.keyboards_menu[c.ENG])
+        except Exception as e:
+            logging.error(e)
+            await callback.message.delete()
+            await callback.message.answer(f"Welcome!",
+                                             reply_markup=k.keyboards_menu[c.ENG])
+
+    else:
+        await callback.answer("You're not subscribed to the channel. Try again.", show_alert=True)
+
+
+async def check_subscription2(user: types.User):
+    user_id = user.id
+    res = await bot.get_chat_member(c.CHANNEL_ID, user_id)
+    if res.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+        return True
+    return False
+
+
+
+
+
+
 # @dp.message(CommandStart(deep_link=True))
 # async def handler(message: Message, command: CommandObject, state: FSMContext):
 #     args = check_if_any_payload(command)
@@ -237,59 +281,77 @@ privacy_policy_keyboard = InlineKeyboardMarkup(inline_keyboard=[
     ]
 ])
 
-@dp.callback_query(F.data.startswith("start_earning"))
-async def start_earning(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data == "confirm_terms")
+async def confirm_terms(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(terms_confirmed=True)
+    await open_web_app(callback, state)
+
+async def send_terms_and_conditions(callback: CallbackQuery):
+    terms_message = (
+        "Before starting, you confirm that you have read our terms and conditions. "
+        "You can find it [here](https://telegra.ph/WhaleRace--Terms-and-Conditions-06-29)."
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Confirm ✅", callback_data="confirm_terms")]
+        ]
+    )
+    await callback.message.answer(terms_message, reply_markup=keyboard, parse_mode="Markdown")
+
+@dp.callback_query(F.data == "start_earning")
+async def start_earning(callback: CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+
+    if user_data.get("terms_confirmed"):
+        await open_web_app(callback, state)
+    else:
+        await send_terms_and_conditions(callback)
+
+
+async def open_web_app(callback: types.CallbackQuery, state: FSMContext):
     try:
+        # Retrieve the language
         lang = await get_lang(state)
-        await callback.message.answer(text=PRIVACY_POLICY_TEXTS[lang], reply_markup=privacy_policy_keyboard)
+        if lang not in c.CONTENT:
+            raise ValueError(f"Language '{lang}' not found in CONTENT")
+
+        # Retrieve user data
+        login_data = get_user_data_by_tgid(callback.from_user.id)
+        if login_data is None:
+            await callback.answer("User data could not be retrieved. Please try again later.", show_alert=True)
+            return
+
+        login, password = login_data['login'], login_data['password']
+
+        localization = 'default'
+        if lang == 'ENG':
+            localization = 'en'
+        elif lang == 'RU':
+            localization = 'ru'
+
+        web_app_url = f"{c.URL_TO_WEBSITE}?data={login}&pmain={password}&lang={localization}"
+        web_app_info = WebAppInfo(url=web_app_url)
+
+        builder = InlineKeyboardBuilder()
+        builder.button(text="🐳 START", web_app=web_app_info)
+        builder.button(text="📘 TUTORIAL", url=c.TUTORIAL)
+        builder.button(text="🌐 NEWS CHANNEL", url=c.NEWS_CHANNEL)
+        builder.button(text="💬 CHAT (ENG)", url=c.CHAT_ENG)
+        builder.adjust(1)
+        new_markup = builder.as_markup()
+
+        # Update the message with the new markup
+        await callback.message.edit_text("Welcome!", reply_markup=new_markup)
+
     except Exception as e:
-        logging.error(f"Error in start_earning: {e}")
-        await callback.answer(text="Some unexpected error occurred", show_alert=True)
+        logging.error(f"Error in open_web_app: {e}")
+        await callback.answer("Some unexpected error occurred", show_alert=True)
 
-
-
-@dp.callback_query(F.data == ACCEPT_PRIVACY_POLICY)
-async def accept_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
-    try:
-        await callback.message.delete()  # Delete the privacy policy message
-
-        lang = await get_lang(state)
-        is_subscribed = await check_subscription(callback.from_user)
-        if is_subscribed:
-            login_data = get_user_data_by_tgid(callback.from_user.id)
-            if login_data is None:
-                await callback.answer(text="User data could not be retrieved. Please try again later.", show_alert=True)
-                return
-            login, password = login_data['login'], login_data['password']
-
-            localization = "default"
-            if lang == c.ENG:
-                localization = 'en'
-            if lang == c.RU:
-                localization = 'ru'
-
-            await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=None)
-            web_app = WebAppInfo(url=c.URL_TO_WEBSITE + f"?data={login}&pmain={password}&lang={localization}")
-            menu_button = types.MenuButtonWebApp(text="Web", web_app=web_app)
-            await bot.set_chat_menu_button(chat_id=callback.from_user.id, menu_button=menu_button)
-
-            await callback.answer(
-                text=c.CONTENT[lang]["LETTING_TO_GAME"],
-                show_alert=True
-            )
-        else:
-            await try_editing(callback.message, msg_text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"])
-            await callback.answer(
-                text=c.CONTENT[lang]["NOT_LETTING_TO_GAME"],
-                show_alert=True
-            )
-    except Exception as e:
-        await callback.answer(text="Some unexpected error occurred", show_alert=True)
 
 @dp.callback_query(F.data == DECLINE_PRIVACY_POLICY)
 async def decline_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
     try:
-        await callback.message.delete()  # Delete the privacy policy message
+        await callback.message.delete()
         await callback.answer(
             text="We are sorry, but we cannot proceed without accepting the privacy policy. 😞",
             show_alert=True
@@ -407,17 +469,23 @@ def toggle_lang(lang):
         return c.RU
 
 
+# async def get_lang(state: FSMContext):
+#     data = await state.get_data()
+#
+#     if data == {}:
+#         # await state.set_state(UserState.lang_code)
+#         await state.update_data(content=c.ENG)
+#
+#     data = await state.get_data()
+#     return data["content"]
 async def get_lang(state: FSMContext):
     data = await state.get_data()
-
-    if data == {}:
-        # await state.set_state(UserState.lang_code)
-        await state.update_data(content=c.ENG)
+    if 'content' not in data:
+        await state.update_data(content='ENG')  # Default to 'ENG' if not set
 
     data = await state.get_data()
-    return data["content"]
-
-
+    logging.info(f"State data: {data}")
+    return data.get('content', 'ENG')
 # ------------------------ MAIN FUNCTIONS --------------------------------- #
 
 
