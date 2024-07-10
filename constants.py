@@ -6,7 +6,7 @@ SUBSCRIBE_TO_ENG_CHANNEL_URL = "https://t.me/+kbODNXySt-8wNzMy"
 SUBSCRIBE_TO_RU_CHANNEL_ID = -1002173476839
 SUBSCRIBE_TO_RU_CHANNEL_URL = "https://t.me/+Ot6DfJnjf0Q5NWVi"
 
-URL_TO_WEBSITE = "https://whalefederation.tech"
+URL_TO_WEBSITE = "https://whale-race.vercel.app"
 
 CHANNEL_ID = -1002086109965
 CHANNEL_LINK = 'https://t.me/+z_gP6cQM2KQ3M2Ey'
@@ -17,7 +17,7 @@ CHAT_ENG = 'https://t.me/+Ht2deF5TOcNkNTdk'
 RU = "RU"
 ENG = "ENG"
 
-WITHOUT_REFERRAL = "EN: Dear user, please use referral link to register in this bot\n\nRU: Уважаемый пользователь, пожалуйста, используйте реферальную ссилку для регистрации в этом боте"
+WITHOUT_REFERRAL = "Dear user, please use referral link to register in this bot"
 
 CONTENT = {
     'ENG': {

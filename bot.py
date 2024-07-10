@@ -7,7 +7,7 @@ from aiogram.enums import ChatMemberStatus
 from aiogram.filters import Command, CommandStart, CommandObject, ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.deep_linking import decode_payload, create_start_link
-from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram.types import WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, InputFile, FSInputFile
 import constants as c
 import keyboard as k
 from aiogram.types import ChatJoinRequest, Message, ChatMemberUpdated
@@ -86,6 +86,7 @@ DELIMITER = "?"
 # ------------------------ COMMAND HANDLERS --------------------------------- #
 @dp.message(CommandStart(deep_link=True))
 async def handler(message: Message, command: CommandObject, state: FSMContext):
+    user_data = await state.get_data()
     args = check_if_any_payload(command)
     referral_login = args[0]
     response = get_user_data_by_tgid(args[0])
@@ -105,7 +106,7 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
             login, password = login_data['login'], login_data['password']
             await message.answer("Choose language🌍", reply_markup=k.firstkeyboard)
 
-            refdata = message.text.split(" ")[1] + DELIMITER + c.ENG
+            refdata = str(message.from_user.id) + DELIMITER + c.ENG
             reflink = await create_start_link(bot, refdata, encode=True)
             user_data = {
                 "login": login,
@@ -119,8 +120,9 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
 
         except Exception as e:
             logging.error(e)
-            await message.answer(f"Welcome back!", reply_markup=k.keyboards_menu[c.ENG])
-
+            photo = FSInputFile('whale.jpg')  # Use FSInputFile to load the photo
+            caption = "Welcome back!"
+            await bot.send_photo(message.chat.id, photo=photo, caption=caption, reply_markup=k.keyboards_menu[c.ENG])
 
 @dp.callback_query(F.data == "eng_change")
 async def eng_change(callback: types.CallbackQuery, state: FSMContext):
@@ -137,22 +139,24 @@ async def eng_change(callback: types.CallbackQuery, state: FSMContext):
                                          reply_markup=k.ready_keyboard, parse_mode="Markdown")
 
 @dp.callback_query(F.data == "ready")
-async def on_ready_button_click(callback: types.CallbackQuery, state: FSMContext):
+async def on_ready_button_click(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     user_id = callback.from_user.id
     is_subscribed = await check_subscription2(callback.from_user)
+    photo = FSInputFile('whale.jpg')  # Use FSInputFile instead of InputFile
+    caption = "🐳 WhaleRace is a crypto game in which you need to move faster than others to get the maximum profit!"
+
     if is_subscribed:
         try:
-            await callback.message.edit_text(f"Welcome!",
-                                             reply_markup=k.keyboards_menu[c.ENG])
+            await bot.send_photo(callback.message.chat.id, photo=photo, caption=caption,
+                                 reply_markup=k.keyboards_menu[c.ENG])
+            await callback.message.delete()  # Remove the original message to avoid duplication
         except Exception as e:
             logging.error(e)
             await callback.message.delete()
-            await callback.message.answer(f"Welcome!",
-                                             reply_markup=k.keyboards_menu[c.ENG])
-
+            await bot.send_photo(callback.message.chat.id, photo=photo, caption=caption,
+                                 reply_markup=k.keyboards_menu[c.ENG])
     else:
         await callback.answer("You're not subscribed to the channel. Try again.", show_alert=True)
-
 
 async def check_subscription2(user: types.User):
     user_id = user.id
@@ -289,14 +293,22 @@ async def confirm_terms(callback: CallbackQuery, state: FSMContext):
 async def send_terms_and_conditions(callback: CallbackQuery):
     terms_message = (
         "Before starting, you confirm that you have read our terms and conditions. "
-        "You can find it [here](https://telegra.ph/WhaleRace--Terms-and-Conditions-06-29)."
+        '<a href="https://telegra.ph/WhaleRace--Terms-and-Conditions-07-09">You can find it here</a>.'
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="Confirm ✅", callback_data="confirm_terms")]
         ]
     )
-    await callback.message.answer(terms_message, reply_markup=keyboard, parse_mode="Markdown")
+    try:
+        await callback.message.edit_text(terms_message, reply_markup=keyboard, parse_mode="HTML",
+                                         disable_web_page_preview=True)
+    except Exception as e:
+        logging.error(e)
+        await callback.message.delete()
+        await callback.message.answer(terms_message, reply_markup=keyboard, parse_mode="HTML",
+                                         disable_web_page_preview=True)
+
 
 @dp.callback_query(F.data == "start_earning")
 async def start_earning(callback: CallbackQuery, state: FSMContext):
@@ -445,10 +457,14 @@ async def try_editing(message: types.Message, msg_text=None, msg_keyboard=None):
     try:
         if msg_text != message.text or msg_keyboard != message.reply_markup:
             await message.edit_text(text=msg_text, reply_markup=msg_keyboard)
-    except Exception:
-        await message.answer(text=msg_text, reply_markup=msg_keyboard)
-        await message.delete()
-
+    except Exception as e:
+        logging.error(f"Failed to edit message: {e}")
+        new_message = await message.answer(text=msg_text, reply_markup=msg_keyboard)
+        try:
+            await message.delete()
+        except Exception as delete_error:
+            logging.error(f"Failed to delete the original message: {delete_error}")
+        return new_message
 
 async def check_subscription(user: types.User):
     res = await bot.get_chat_member(c.SUBSCRIBE_TO_ENG_CHANNEL_ID, user.id)
