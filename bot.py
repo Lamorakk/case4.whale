@@ -2,8 +2,9 @@ import asyncio
 import contextlib
 import logging
 
-import aiogram
-from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import FSInputFile
+from aiogram.enums import ChatMemberStatus, ParseMode
 from aiogram.filters import Command, CommandStart, CommandObject, ChatMemberUpdatedFilter, IS_MEMBER, IS_NOT_MEMBER
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.deep_linking import decode_payload, create_start_link
@@ -121,42 +122,71 @@ async def handler(message: Message, command: CommandObject, state: FSMContext):
         except Exception as e:
             logging.error(e)
             photo = FSInputFile('whale.jpg')  # Use FSInputFile to load the photo
-            caption = "Welcome back!"
-            await bot.send_photo(message.chat.id, photo=photo, caption=caption, reply_markup=k.keyboards_menu[c.ENG])
+            await bot.send_photo(message.chat.id, photo=photo, caption=c.CAPTION,
+                                 reply_markup=k.keyboards_menu[c.ENG], parse_mode='HTML')
+# @dp.callback_query(F.data == "eng_change")
+# async def eng_change(callback: types.CallbackQuery, state: FSMContext):
+#     user_id = callback.from_user.id
+#     try:
+#         await callback.message.edit_text(f"To get started, join our project channel and click the ready button.\n\n"
+#                                          f"👉 [Click here to join]({c.CHANNEL_LINK})\n",
+#                                          reply_markup=k.ready_keyboard, parse_mode="Markdown")
+#     except Exception as e:
+#         logging.error(e)
+#         await callback.message.delete()
+#         await callback.message.answer("To get started, join our project channel and click the ready button.\n\n"
+#                                          "👉 [Click here to join](https://t.me/+2Lg1H7U5iMQ1NTlk)\n",
+#                                          reply_markup=k.ready_keyboard, parse_mode="Markdown")
+
+
+async def check_channel_membership(bot: Bot, user_id: int, channel_id: int) -> bool:
+    member = await bot.get_chat_member(chat_id=channel_id, user_id=user_id)
+    return member.status in ['member', 'administrator', 'creator']
+
+
+# async def check_chat_membership(bot: Bot, user_id: int, chat_id: int) -> bool:
+#     member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
+#     return member.status in ['member', 'administrator', 'creator']
+
 
 @dp.callback_query(F.data == "eng_change")
-async def eng_change(callback: types.CallbackQuery, state: FSMContext):
+async def eng_change(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     user_id = callback.from_user.id
     try:
-        await callback.message.edit_text(f"To get started, join our project channel and click the ready button.\n\n"
-                                         f"👉 [Click here to join]({c.CHANNEL_LINK})\n",
-                                         reply_markup=k.ready_keyboard, parse_mode="Markdown")
+        await callback.message.edit_text(
+            "To get started, join our project channel and chat, then click the ready button.\n\n"
+            f"👉 [Join the channel]({c.CHANNEL_test_LINK})\n",
+            reply_markup=k.ready_keyboard,
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
     except Exception as e:
         logging.error(e)
         await callback.message.delete()
-        await callback.message.answer("To get started, join our project channel and click the ready button.\n\n"
-                                         "👉 [Click here to join](https://t.me/+2Lg1H7U5iMQ1NTlk)\n",
-                                         reply_markup=k.ready_keyboard, parse_mode="Markdown")
+        await callback.message.answer(
+            "To get started, join our project channel and chat, then click the ready button.\n\n"
+            f"👉 [Join the channel]({c.CHANNEL_test_LINK})\n",
+            reply_markup=k.ready_keyboard,
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
+
 
 @dp.callback_query(F.data == "ready")
-async def on_ready_button_click(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
+async def check_sub(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     user_id = callback.from_user.id
-    is_subscribed = await check_subscription2(callback.from_user)
-    photo = FSInputFile('whale.jpg')  # Use FSInputFile instead of InputFile
-    caption = "🐳 WhaleRace is a crypto game in which you need to move faster than others to get the maximum profit!"
 
-    if is_subscribed:
-        try:
-            await bot.send_photo(callback.message.chat.id, photo=photo, caption=caption,
-                                 reply_markup=k.keyboards_menu[c.ENG])
-            await callback.message.delete()  # Remove the original message to avoid duplication
-        except Exception as e:
-            logging.error(e)
-            await callback.message.delete()
-            await bot.send_photo(callback.message.chat.id, photo=photo, caption=caption,
-                                 reply_markup=k.keyboards_menu[c.ENG])
+    is_channel_member = await check_channel_membership(bot, user_id, c.CHANNEL_test_ID)
+    # is_chat_member = await check_chat_membership(bot, user_id, c.chat_id)
+    if is_channel_member:
+        await callback.answer("🎉 You are a member! Welcome! 🎉", show_alert=True)
+        photo = FSInputFile('whale.jpg')
+        await bot.send_photo(callback.message.chat.id, photo=photo, caption=c.CAPTION,
+                             reply_markup=k.keyboards_menu[c.ENG], parse_mode='HTML')
+        await callback.message.delete()
     else:
-        await callback.answer("You're not subscribed to the channel. Try again.", show_alert=True)
+        await callback.answer("❌ You need to join the channel to proceed.", show_alert=True)
+
 
 async def check_subscription2(user: types.User):
     user_id = user.id
@@ -293,7 +323,7 @@ async def confirm_terms(callback: CallbackQuery, state: FSMContext):
 async def send_terms_and_conditions(callback: CallbackQuery):
     terms_message = (
         "Before starting, you confirm that you have read our terms and conditions. "
-        '<a href="https://telegra.ph/WhaleRace--Terms-and-Conditions-07-09">You can find it here</a>.'
+        f'<a href="https://telegra.ph/WhaleRace--Terms-and-Conditions-07-09">You can find it here</a>.'
     )
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -321,6 +351,7 @@ async def start_earning(callback: CallbackQuery, state: FSMContext):
 
 
 async def open_web_app(callback: types.CallbackQuery, state: FSMContext):
+    photo = FSInputFile('whale.jpg')  # Use FSInputFile instead of InputFile
     try:
         # Retrieve the language
         lang = await get_lang(state)
@@ -345,21 +376,175 @@ async def open_web_app(callback: types.CallbackQuery, state: FSMContext):
         web_app_info = WebAppInfo(url=web_app_url)
 
         builder = InlineKeyboardBuilder()
-        builder.button(text="🐳 START", web_app=web_app_info)
-        builder.button(text="📘 TUTORIAL", url=c.TUTORIAL)
+        builder.button(text="🐳 PLAY", web_app=web_app_info)
+        builder.button(text="📘 HOW TO START", callback_data="tutorf")
         builder.button(text="🌐 NEWS CHANNEL", url=c.NEWS_CHANNEL)
         builder.button(text="💬 CHAT (ENG)", url=c.CHAT_ENG)
         builder.adjust(1)
         new_markup = builder.as_markup()
 
-        # Update the message with the new markup
-        await callback.message.edit_text("Welcome!", reply_markup=new_markup)
+        await callback.message.delete()
+        # await callback.message.edit_text("Welcome!", reply_markup=new_markup)
+        await bot.send_photo(callback.message.chat.id, photo=photo, caption=c.CAPTION,
+                             reply_markup=new_markup, parse_mode='HTML')
 
     except Exception as e:
         logging.error(f"Error in open_web_app: {e}")
         await callback.answer("Some unexpected error occurred", show_alert=True)
 
+# @dp.callback_query(F.data == "tutor")
+# async def tutor(callback: CallbackQuery, state: FSMContext):
+#     user_data = await state.get_data()
+#     try:
+#         await callback.message.edit_text("After reading the articles you will understand how the game works, how to make a "
+#                                       "deposit, how to withdraw profits and how to make more profit than others!",
+#                                       reply_markup=k.tutorkeyboard)
+#     except Exception as e:
+#         logging.error(e)
+#         await callback.message.delete()
+#         await callback.message.answer("After reading the articles you will understand how the game works, how to make a "
+#                                       "deposit, how to withdraw profits and how to make more profit than others!",
+#                                       reply_markup=k.tutorkeyboard)
 
+
+@dp.callback_query(F.data == "tutor")
+async def tutor(callback: CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    source_chat_id = -1002158523451
+    message_id = 2
+    caption_text = ("Watch the video to understand how our game works 🐳\n\n"
+                    "To read the article, choose:")
+
+    try:
+        # Attempt to delete the original callback message
+        await callback.message.delete()
+    except TelegramBadRequest as e:
+        logging.error(f"Failed to delete message: {e}")
+
+    try:
+        # Forward the video message from the source chat to get its message ID
+        forwarded_message = await callback.message.bot.forward_message(
+            chat_id=callback.message.chat.id,
+            from_chat_id=source_chat_id,
+            message_id=message_id
+        )
+
+        # Extract file ID from the forwarded message
+        file_id_video = forwarded_message.video.file_id if forwarded_message.video else None
+
+        if not file_id_video:
+            logging.error("Error: Video file ID is missing")
+            await callback.message.answer("Unable to retrieve the video. Please try again later.")
+            return
+
+        # Delete the forwarded message to remove "forwarded from" note
+        await callback.message.bot.delete_message(
+            chat_id=callback.message.chat.id,
+            message_id=forwarded_message.message_id
+        )
+
+        # Send the video using its file ID
+        await callback.message.bot.send_video(
+            chat_id=callback.message.chat.id,
+            video=file_id_video,
+            caption=caption_text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=k.tutorkeyboard
+        )
+
+    except TelegramBadRequest as e:
+        logging.error(f"Failed to handle video: {e}")
+        await callback.message.answer("Unable to process the video. Please check the source chat and message ID.")
+
+@dp.callback_query(F.data == "tutorf")
+async def tutorf(callback: CallbackQuery, state: FSMContext):
+    user_data = await state.get_data()
+    source_chat_id = -1002158523451
+    message_id = 2
+    caption_text = ("Watch the video to understand how our game works 🐳\n\n"
+                    "To read the article, choose:")
+
+    try:
+        # Attempt to delete the original callback message
+        await callback.message.delete()
+    except TelegramBadRequest as e:
+        logging.error(f"Failed to delete message: {e}")
+
+    try:
+        # Forward the video message from the source chat to get its message ID
+        forwarded_message = await callback.message.bot.forward_message(
+            chat_id=callback.message.chat.id,
+            from_chat_id=source_chat_id,
+            message_id=message_id
+        )
+
+        # Extract file ID from the forwarded message
+        file_id_video = forwarded_message.video.file_id if forwarded_message.video else None
+
+        if not file_id_video:
+            logging.error("Error: Video file ID is missing")
+            await callback.message.answer("Unable to retrieve the video. Please try again later.")
+            return
+
+        # Delete the forwarded message to remove "forwarded from" note
+        await callback.message.bot.delete_message(
+            chat_id=callback.message.chat.id,
+            message_id=forwarded_message.message_id
+        )
+
+        # Send the video using its file ID
+        await callback.message.bot.send_video(
+            chat_id=callback.message.chat.id,
+            video=file_id_video,
+            caption=caption_text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=k.tutorkeyboardred
+        )
+
+    except TelegramBadRequest as e:
+        logging.error(f"Failed to handle video: {e}")
+        await callback.message.answer("Unable to process the video. Please check the source chat and message ID.")
+@dp.callback_query(F.data == "go_back")
+async def go_back(callback: types.CallbackQuery, state: FSMContext):
+    photo = FSInputFile('whale.jpg')  # Use FSInputFile instead of InputFile
+    await callback.message.delete()
+    await bot.send_photo(callback.message.chat.id, photo=photo, caption=c.CAPTION,
+                         reply_markup=InlineKeyboardMarkup(inline_keyboard=k.kb_eng_menu), parse_mode='HTML')
+
+@dp.callback_query(F.data == "go_backbut")
+async def go_back(callback: CallbackQuery, state: FSMContext):
+    lang = await get_lang(state)
+    if lang not in c.CONTENT:
+        raise ValueError(f"Language '{lang}' not found in CONTENT")
+
+    # Retrieve user data
+    login_data = get_user_data_by_tgid(callback.from_user.id)
+    if login_data is None:
+        await callback.answer("User data could not be retrieved. Please try again later.", show_alert=True)
+        return
+
+    login, password = login_data['login'], login_data['password']
+
+    localization = 'default'
+    if lang == 'ENG':
+        localization = 'en'
+    elif lang == 'RU':
+        localization = 'ru'
+
+    web_app_url = f"{c.URL_TO_WEBSITE}?data={login}&pmain={password}&lang={localization}"
+    web_app_info = WebAppInfo(url=web_app_url)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🐳 PLAY", web_app=web_app_info)
+    builder.button(text="📘 HOW TO START", callback_data="tutorf")
+    builder.button(text="🌐 NEWS CHANNEL", url=c.NEWS_CHANNEL)
+    builder.button(text="💬 CHAT (ENG)", url=c.CHAT_ENG)
+    builder.adjust(1)
+    new_markup = builder.as_markup()
+    photo = FSInputFile('whale.jpg')  # Use FSInputFile instead of InputFile
+    await callback.message.delete()
+    await bot.send_photo(callback.message.chat.id, photo=photo, caption=c.CAPTION,
+                         reply_markup=new_markup, parse_mode='HTML')
 @dp.callback_query(F.data == DECLINE_PRIVACY_POLICY)
 async def decline_privacy_policy(callback: types.CallbackQuery, state: FSMContext):
     try:

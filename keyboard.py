@@ -1,7 +1,7 @@
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram import types
 import constants as c
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 firstkeyboard = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -12,6 +12,26 @@ firstkeyboard = InlineKeyboardMarkup(
 ready_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [InlineKeyboardButton(text="Ready ✅", callback_data="ready")]
+    ]
+)
+
+tutorkeyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="🔹How does it work?", url=c.TUTORIAL_gen)],
+        [InlineKeyboardButton(text="🔹How to deposit and withdraw?", url=c.TUTORIAL_with)],
+        [InlineKeyboardButton(text="🔹How to promote a link?", url=c.TUTORIAL_pr)],
+        [InlineKeyboardButton(text="BACK ↩", callback_data= "go_back")],
+
+    ]
+)
+
+tutorkeyboardred = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="🔹How does it work?", url=c.TUTORIAL_gen)],
+        [InlineKeyboardButton(text="🔹How to deposit and withdraw?", url=c.TUTORIAL_with)],
+        [InlineKeyboardButton(text="🔹How to promote a link?", url=c.TUTORIAL_pr)],
+        [InlineKeyboardButton(text="BACK ↩", callback_data= "go_backbut")],
+
     ]
 )
 
@@ -34,10 +54,10 @@ ready_keyboard = InlineKeyboardMarkup(
 
 kb_ru_menu = [
     [
-        types.InlineKeyboardButton(text="🐳 START ", callback_data="start_earning"),
+        types.InlineKeyboardButton(text="🐳 PLAY ", callback_data="start_earning"),
     ],
     [
-        types.InlineKeyboardButton(text="📘 TUTORIAL", url=c.TUTORIAL),
+        types.InlineKeyboardButton(text="📘 HOW TO START", callback_data="tutor"),
     ],
     [
         types.InlineKeyboardButton(text="🌐 NEWS CHANNEL  ", url=c.NEWS_CHANNEL),
@@ -50,10 +70,10 @@ kb_ru_menu = [
 # ENG Menu Keyboard
 kb_eng_menu = [
     [
-        types.InlineKeyboardButton(text="🐳 START ", callback_data="start_earning"),
+        types.InlineKeyboardButton(text="🐳 PLAY ", callback_data="start_earning"),
     ],
     [
-        types.InlineKeyboardButton(text="📘 TUTORIAL", url=c.TUTORIAL),
+        types.InlineKeyboardButton(text="📘 HOW TO START", callback_data="tutor"),
     ],
     [
         types.InlineKeyboardButton(text="🌐 NEWS CHANNEL  ", url=c.NEWS_CHANNEL),
